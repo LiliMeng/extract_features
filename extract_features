@@ -1,0 +1,114 @@
+'''
+Extract features for single images
+Author: Lili Meng
+Date: August 28th, 2018
+'''
+import numpy as np
+import pickle
+import os
+from PIL import Image
+import time
+from tqdm import tqdm
+import shutil
+from random import randint
+import argparse
+import os
+
+import torchvision.transforms as transforms
+import torchvision.models as models
+import torch.nn as nn
+import torch
+#import torch.backends.cudnn as cudnn
+from torch.autograd import Variable
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+import torchvision.transforms.functional as F
+
+
+import cv2
+
+parser = argparse.ArgumentParser(description='feature extractor from pretrained model')
+parser.add_argument('--model', default='resnet50', type=str, help='pretrained model type for feature extractor')
+
+
+class FeatureExtractor(nn.Module):
+    def __init__(self, original_model):
+        super(FeatureExtractor, self).__init__()
+        self.features = nn.Sequential(*list(original_model.children())[:-1])
+
+    def forward(self, x):
+        x = self.features(x)
+        
+        return x
+
+
+def main():
+
+    global arg
+    arg = parser.parse_args()
+    print(arg)
+
+    # 1. build model
+    print ('==> Build model and setup loss and optimizer')
+    # build model
+    model = getattr(models, arg.model)(pretrained=True)
+
+    #Loss function and optimizer
+    criterion = nn.CrossEntropyLoss().cuda()
+    optimizer = torch.optim.SGD(model.parameters(), lr=5e-4, momentum=0.9)
+    #self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
+    scheduler = ReduceLROnPlateau(optimizer, 'min', patience=1,verbose=True)
+
+    # 3. prepare input data including load all imgs and preprocessing, prepare input tensor
+    transform = transforms.Compose([
+                transforms.Scale([224, 224]),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
+
+ 
+
+    feature_dir = "./saved_train_features/"
+    if not os.path.exists(feature_dir):
+        os.makedirs(feature_dir)
+    
+
+    model.eval()
+
+    img_root_path = '/Users/lilimeng/Desktop/Price_prediction/extract_features/spaceNet_sample_data_paris/'
+    img_list = "/Users/lilimeng/Desktop/Price_prediction/extract_features/img_list/train_list.txt"
+
+    lines = [line.strip() for line in open(img_list).readlines()]
+
+    i =0
+  
+    for line in lines:
+
+        img_name = os.path.join(img_root_path, line)
+        input_data = torch.from_numpy(cv2.imread(img_name))
+  
+        input_data = transform(F.to_pil_image(input_data))
+
+        input_var = Variable(input_data.view(-1, 3, input_data.size(1), input_data.size(2)), volatile=True)#.cuda()
+
+        print("input_var.shape ", input_var.shape)
+
+        # 4. extract featrues before the fully connected layer
+        features_before_fc = FeatureExtractor(model)
+
+        features = features_before_fc(input_var).view(2048, 1)
+
+        features = features.view(2048, 1)
+
+        features_np = np.squeeze(features.data.cpu().numpy())
+
+        
+        print("features_np.shape: ", features_np.shape)
+
+        
+        
+        np.save(os.path.join(feature_dir, 'features_{}.npy'.format('%05d'%i)), features_np)
+       
+        
+        i+=1
+ 
+if __name__=='__main__':
+    main()
