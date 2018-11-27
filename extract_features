@@ -28,6 +28,9 @@ import cv2
 
 parser = argparse.ArgumentParser(description='feature extractor from pretrained model')
 parser.add_argument('--model', default='resnet50', type=str, help='pretrained model type for feature extractor')
+parser.add_argument('--img_root_path', default='/Users/lilimeng/Desktop/Price_prediction/SpaceNet/spaceNet_annotations_Paris/spaceNet_paris_train_jpg', type=str, help='image root path')
+parser.add_argument('--img_list', default='/Users/lilimeng/Desktop/Price_prediction/extract_features/img_list/database_list.txt', help='the list contains the database list')
+parser.add_argument('--stored_feature_dir', default="./saved_resnet_database_features/", help='the directory for storing the extracted features')
 
 
 class FeatureExtractor(nn.Module):
@@ -64,25 +67,22 @@ def main():
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
- 
-
-    feature_dir = "./saved_train_features/"
-    if not os.path.exists(feature_dir):
-        os.makedirs(feature_dir)
+    
+    if not os.path.exists(arg.stored_feature_dir):
+        os.makedirs(arg.stored_feature_dir)
     
 
     model.eval()
 
-    img_root_path = '/Users/lilimeng/Desktop/Price_prediction/extract_features/spaceNet_sample_data_paris/'
-    img_list = "/Users/lilimeng/Desktop/Price_prediction/extract_features/img_list/train_list.txt"
-
-    lines = [line.strip() for line in open(img_list).readlines()]
+    lines = [line.strip() for line in open(arg.img_list).readlines()]
+    total_num_imgs = len(lines)
 
     i =0
   
     for line in lines:
 
-        img_name = os.path.join(img_root_path, line)
+        img_name = os.path.join(arg.img_root_path, line)
+
         input_data = torch.from_numpy(cv2.imread(img_name))
   
         input_data = transform(F.to_pil_image(input_data))
@@ -100,15 +100,14 @@ def main():
 
         features_np = np.squeeze(features.data.cpu().numpy())
 
-        
-        print("features_np.shape: ", features_np.shape)
+        #print("features_np.shape: ", features_np.shape)
 
+        np.save(os.path.join(arg.stored_feature_dir, 'features_{}.npy'.format('%05d'%i)), features_np)
         
-        
-        np.save(os.path.join(feature_dir, 'features_{}.npy'.format('%05d'%i)), features_np)
-       
+        print("{}/{}: ",format(i, total_num_imgs))
         
         i+=1
  
 if __name__=='__main__':
     main()
+
