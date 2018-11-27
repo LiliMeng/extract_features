@@ -38,15 +38,12 @@ def main():
 
     query_img_lines = [line.strip() for line in open(arg.query_img_list).readlines()]
 
-    print("arg.query_img_name: ", arg.query_img_name)
     query_img = cv2.imread(arg.query_img_name)
 
     #cv2.imshow('query img', query_img)
     #cv2.waitKey(0)
 
     for i in range(len(query_img_lines)):
-        print("query_img_lines[i]: ", query_img_lines[i])
-        print("arg.query_img_name.split('/')[-1] ", arg.query_img_name.split('/')[-1])
         if query_img_lines[i] == arg.query_img_name.split('/')[-1]:
             feature_index = i 
 
@@ -77,7 +74,7 @@ def main():
     
     black_area = np.zeros((400, 10, 3), dtype=np.uint8)
 
-    vis = np.zeros((400,10, 1), dtype=np.unint8)
+    vis = np.zeros((400,1,3), dtype=np.uint8)
 
     for i in range(len(results[0])):
 
@@ -101,7 +98,7 @@ def main():
 
     
     cv2.imshow('query img and top 3 retrieved results', vis)
-    cv2.waitKey()
+    cv2.waitKey(0)
 
 
 if __name__=='__main__':
